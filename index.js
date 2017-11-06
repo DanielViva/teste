@@ -8,37 +8,66 @@ app.use(bodyParser.urlencoded({ extended: false }));
 var pgp = require('pg-promise')(/*options*/)
 var db = pgp('postgres://postgres:daniel@localhost:5432/Teste')
 
-db.query("create table if not exists prisma_pedidos(id serial primary key, quantidade int, color varchar, entregue timestamp, pago timestamp, cadastro timestamp default current_timestamp;");
+db.query("create table if not exists prisma_pedidos(id serial primary key, quantidade int, color varchar, entregue timestamp, pago timestamp, cadastro timestamp default current_timestamp);");
+db.query("create table if not exists prisma_estoque(id serial primary key, quantidade int, color varchar, cadastro timestamp default current_timestamp);");
 
 
 app.post("/add", function(request, response) {
-    var query = "select * from testetb where id = ${id};"
-    console.log(request);
+    var query = "insert into prisma_pedidos (quantidade, color) values (${quantidade}, ${color});"
+    var parameters = request.body
+
+    db.any(query, parameters)
+    .then(function(data) {
+      console.log(data);
+      response.redirect("/")
+          }).catch(function(err) {
+      console.error(err);
+    })
+
+});
+
+app.get("/entregue", function(request, response) {
+    var query = "update prisma_pedidos set entregue = now() where id = (${id});;"
+    var parameters = request.query
+
+    db.any(query, parameters)
+    .then(function(data) {
+      console.log(data);
+      response.redirect("/")
+          }).catch(function(err) {
+      console.error(err);
+    })
+
+});
+
+app.post("/stock", function(request, response) {
+    var query = "insert into prisma_estoque (quantidade, color) values (${quantidade}, ${color});"
     var parameters = request.body //{ id: 56}    -> ?id=56
 
     db.any(query, parameters)
     .then(function(data) {
       console.log(data);
-      response.send(data)//(data.map(function(obj){return obj["nome"] + " - " + obj["altura"]}));
+      response.redirect("/")
     }).catch(function(err) {
       console.error(err);
     })
 
 });
 
-app.get("/add", function(request, response) {
-    response.send("<form method='post' action='/add'> <input type='text' name='id' /><input type='submit' value='text' /></form>")
+
+app.get("/", function(request, response) {
+    response.send("<form method='post' action='/add'> <input type='text' name='quantidade' /> <br> <input type='text' name='color' /><br>  <input type='submit' value='pedido' /></form> <br> <br> <br> <br> <form method='post' action='/stock'> <input type='text' name='quantidade' /> <br> <input type='text' name='color' /><br>  <input type='submit' value='ADD estoque' /></form>")
 
 });
 
-app.get("/", function(req, res) {
-    var pedido = "select * from testetb;"
-    var parameters = {}
+ app.get("/abertos", function(req, res) {
+          var pedido = "select * from prisma_pedidos where entregue is null;"
+     var parameters = {}
 
-    db.any(pedido, parameters)
-    .then(function(data) {
-      console.log(data);
-      res.send(data.map(function(obj){return obj["nome"] + " - " + obj["altura"]}));
+     db.any(pedido, parameters)
+     .then(function(data) {
+       console.log(data);
+      res.send(data);
     }).catch(function(err) {
       console.error(err);
     })
